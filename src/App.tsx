@@ -1,0 +1,28 @@
+import {CircleCheck,TriangleAlert,Share2,Shuffle,RotateCcw,Trash2,Download,Sticker,Plus,Check,Menu,X} from 'lucide-react';
+import {Footer,InfoPage} from './Pages';
+import {useEffect,useRef,useState} from 'react';
+import {Food,Sandwich} from './Food';
+import {decode,encode,emptyRecipe,ingredients,presets,addPiece,movePiece,removePiece,type Recipe} from './recipe';
+import {exportPng} from './exportPng';
+export default function App(){
+ const [recipe,setRecipe]=useState<Recipe>(()=>decode(location.hash)??presets['Česká klasika']);
+ const [tab,setTab]=useState<'topping'|'spread'>('topping'),[toast,setToast]=useState(''),[fallback,setFallback]=useState(''),[exporting,setExporting]=useState(false);
+ const [menu,setMenu]=useState(false);
+ const [selected,setSelected]=useState<number|null>(null);
+ function remove(index:number){setRecipe(r=>removePiece(r,index));setSelected(null);setToast('Kousek odebrán.');}
+ const error=toast.startsWith('Export se nepovedl')||toast.startsWith('Zkopíruj');
+ const artwork=useRef<HTMLDivElement>(null);
+ useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),4000);return()=>clearTimeout(t);},[toast]);
+ useEffect(()=>{const load=()=>{const r=decode(location.hash);if(r){setRecipe(r);setSelected(null);}};window.addEventListener('hashchange',load);return()=>window.removeEventListener('hashchange',load);},[]);
+ useEffect(()=>{if(!menu)return;const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setMenu(false);};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[menu]);
+ async function share(){const u=new URL(location.href);u.hash=encode(recipe);try{await navigator.clipboard.writeText(u.href);setToast('Odkaz zkopírován. Pošli svoje dílo dál.');}catch{setFallback(u.href);setToast('Zkopíruj odkaz z políčka dole.');}}
+ async function download(sticker:boolean){const svg=artwork.current?.querySelector('svg');if(!svg||exporting)return;setExporting(true);try{await exportPng(svg,sticker);setToast(sticker?'Samolepka stažena. Pozadí je průhledné.':'PNG staženo. Dobrou chuť očima.');}catch{setToast('Export se nepovedl. Zkus to prosím znovu.');}finally{setExporting(false);}}
+ function surprise(){setSelected(null);const spreads=ingredients.filter(i=>i.group==='spread');setToast('Nový chlebíček připraven.');setRecipe({spread:spreads[Math.floor(Math.random()*spreads.length)].id,toppings:ingredients.filter(i=>i.group==='topping'&&Math.random()>.5).map(i=>i.id)});}
+ if(location.pathname!=='/')return <InfoPage/>;
+ return <div className="app"><header><a className="brand" href="/">chlebíček<span>.</span></a><div className="header-actions"><button className="quiet" onClick={share}>Sdílet <Share2 aria-hidden="true"/></button><button className="quiet menu-toggle" aria-label={menu?"Zavřít menu":"Otevřít menu"} aria-expanded={menu} aria-controls="mobile-menu" onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</button></div>{menu&&<nav id="mobile-menu" className="mobile-menu" aria-label="Menu"><a href="/podminky.html">Podmínky</a><a href="/soukromi.html">Soukromí</a><a href="mailto:stepa15.b@gmail.com">Kontakt</a></nav>}</header><main>
+ <div className="intro"><h1>Malý chlebíček.<br/><span>Velká osobnost.</span></h1></div>
+ <section className="studio" aria-label="Tvůj chlebíček"><div className="artwork" ref={artwork}><Sandwich recipe={recipe} selected={selected} onSelect={setSelected} onMove={(i,x,y)=>setRecipe(r=>movePiece(r,i,x,y))} onRemove={remove}/></div><div className="piece-tools">{selected!==null&&selected<recipe.toppings.length?<button className="quiet" onClick={()=>remove(selected)}>Odebrat vybraný kousek <Trash2 aria-hidden="true"/></button>:<span>Kousky můžeš přesouvat prstem i myší.</span>}</div><div className="play-actions"><button className="quiet" onClick={surprise}>Překvap mě <Shuffle aria-hidden="true"/></button><span className="separator"/><button className="quiet" onClick={()=>{setRecipe(emptyRecipe);setSelected(null);setToast('Chlebíček vyčištěn.');}}>Vyčistit <RotateCcw aria-hidden="true"/></button></div></section>
+ <section className="toolbox" aria-label="Suroviny"><div className="toolbox-top"><div className="tabs" aria-label="Kategorie surovin"><button aria-pressed={tab==='topping'} onClick={()=>setTab('topping')}>Navrch</button><button aria-pressed={tab==='spread'} onClick={()=>setTab('spread')}>Základ</button></div><span>Klikni znovu pro další kousek.</span></div><div className={`ingredient-tray ${tab}`}>{ingredients.filter(i=>i.group===tab).map(i=>{const selected=recipe.spread===i.id||recipe.toppings.includes(i.id);return <button className="ingredient" key={i.id} aria-pressed={selected} onClick={()=>setRecipe(r=>addPiece(r,i.id))}><svg viewBox="-45 -42 90 84" aria-hidden="true"><Food id={i.id}/></svg><span>{i.short}</span><i aria-hidden="true">{i.group==='topping'?(recipe.toppings.filter(t=>t===i.id).length||<Plus/>):(selected?<Check/>:<Plus/>)}</i></button>;})}</div></section>
+ <div className="exports"><span>Tenhle si zaslouží uložit.</span><div><button className="secondary" disabled={exporting} onClick={()=>void download(false)}>{exporting?'Připravuju…':'Stáhnout PNG'} <Download aria-hidden="true"/></button><button className="primary" disabled={exporting} onClick={()=>void download(true)}>PNG samolepka <Sticker aria-hidden="true"/></button></div></div>
+ {fallback&&<input className="fallback" readOnly aria-label="Odkaz ke zkopírování" value={fallback} onFocus={e=>e.target.select()}/>}</main><Footer/><div className="toast" data-tone={error?"error":"success"} role={error?"alert":"status"}>{toast&&<>{error?<TriangleAlert size={17} aria-hidden="true"/>:<CircleCheck size={17} aria-hidden="true"/>}{toast}</>}</div></div>;
+}
