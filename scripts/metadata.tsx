@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import {Sandwich} from '../src/Food';
 import {presets} from '../src/recipe';
 import {InfoPage} from '../src/Pages';
-const origin=process.env.SITE_URL?.replace(/\/$/,'');
+const origin=(process.env.SITE_URL || 'https://chlebicek.vercel.app').replace(/\/$/,'');
 if(origin&&!/^https:\/\/[^/]+$/.test(origin))throw new Error('SITE_URL must be an HTTPS origin without a path.');
 const base=readFileSync('dist/index.html','utf8');
 const desc='Malý zábavný builder chlebíčků. Přidávej suroviny, přesouvej je a stáhni svůj výtvor jako PNG nebo průhlednou samolepku.';
